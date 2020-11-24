@@ -37,7 +37,7 @@ amp = 100; % amplification
 ns = 1; % 信号数量
 musicazelspectrum = phased.MUSICEstimator2D('SensorArray',uca,...
     'OperatingFrequency',fc,'PropagationSpeed',c,...
-    'AzimuthScanAngles',-180:180,'ElevationScanAngles',-1:30,...,
+    'AzimuthScanAngles',-90:90,'ElevationScanAngles',-1:30,...,
     'DOAOutputPort',true,...
     'NumSignalsSource','Property','NumSignals',ns);
 
@@ -51,11 +51,13 @@ for idx = 1:(endTime*fs/audioFrameLength) % 为什么是这个值
     y = y(:,2:end);
     %滤波，提取超声波信号
     Wc = [2*(fc-350)/fs,2*(fc+350)/fs];
-    [b, a] = butter(10,Wc);
+    [b, a] = butter(4,Wc);
     y = filter(b,a,y);
     % y = highpass(y,20e3-350,fs);
     [~,ang] = musicazelspectrum(y);
+    figure(2)
     plotSpectrum(musicazelspectrum);
+    drawnow
     %DoaDisplayer(deg2rad(ang(1))); % 可视化
     if record
         pause(audioFrameLength/fs - toc + cycleStart) % 为什么是这个值
@@ -138,11 +140,11 @@ graph_fdB = graph;
 figure;
 graph_vt = animatedline;
 title('v-t');
-xlabel('t');
-ylabel('v')
+xlabel('t(s)');
+ylabel('v(m/s)')
 
-% db阈值 16还不错
-threshold = 8;
+% db阈值 16/10还不错
+threshold = 5;
 % 循环处理信号 idx=50开始出现波动
 % for i = 1:50
 %     y = audioInput();
@@ -155,10 +157,10 @@ for idx = 1:(endTime*fs/audioFrameLength) % 为什么是这个值
     Wc = [2*(fc-3.5e3)/fs,2*(fc+3.5e3)/fs];
     [b, a] = butter(4,Wc);
     y = filter(b,a,y);
-%     y = y(:,1); % 只拿中心点
+    y = y(:,7); % 只拿中心点
     % beamform
-    weight = ones(7, 1)/7;
-    y = ump8beamform(y, fs, weight);
+%     weight = ones(7, 1)/7;
+%     y = ump8beamform(y, fs, weight);
     
     % fft
     FFT_Data = fft(y);
@@ -177,8 +179,8 @@ for idx = 1:(endTime*fs/audioFrameLength) % 为什么是这个值
 %     diff_ph = diff(ph);
 %     % 将前40个和后40个点拿去,平均住不管用
 %     diff_ph = diff_ph(40:end-40);
-% %     diff_ph = smooth(diff_ph, 0.9); % 平滑化
-% %     diff_ph = diff_ph(50:end-50);
+%     diff_ph = smooth(diff_ph, 0.9); % 平滑化
+%     diff_ph = diff_ph(50:end-50);
 %     
 %     diff_ph_std = std(diff_ph)*1e5; % 大于5就有速度，暂时先这样，不是很好
 %     %disp(diff_ph_std);
@@ -208,12 +210,11 @@ for idx = 1:(endTime*fs/audioFrameLength) % 为什么是这个值
     fr = f_candidates(fr_index);
     % disp(fr);
     
-    % 判断运动
-    p = findpeaks(dB_filter,'MinPeakHeight',max_dB+threshold);
+    % 判断运动，这里的阈值不使用之前计算得到的阈值
+    p = findpeaks(dB_filter,'MinPeakHeight',max_dB+10);
     n_p = size(p,1);
     if n_p > 1
         % 有运动
-        
         % 计算速度
         ft = fc;
         v = c * (fr-ft)/(fr+ft);
@@ -221,6 +222,8 @@ for idx = 1:(endTime*fs/audioFrameLength) % 为什么是这个值
         % 无运动
         v = 0;
     end
+%     ft = fc;
+%     v = c * (fr-ft)/(fr+ft);
     % disp(v)
     % 画v-t图
     addpoints(graph_vt,toc,v)
@@ -229,27 +232,55 @@ for idx = 1:(endTime*fs/audioFrameLength) % 为什么是这个值
     if DEBUG
         x = f_filter;
         y = dB_filter;
-%         x = 1/fs:1/fs:(length(ph)-80)/fs;
+%         x = 40/fs:1/fs:(length(ph)-41)/fs;
 %         y = diff_ph;
         if ~ishandle(graph_fdB)
             % graph = plot(f,P1);
             figure;
             graph_fdB = plot(x, y);
-            title('Single-Sided Amplitude Spectrum of X(t)');
+            title('Amplitude Spectrum of fr with 20kHz ft');
             xlabel('f (Hz)');
-            % ylabel('|P1(f)|');
             ylabel('dB')
+            
+%             title('phase diff');
+%             xlabel('t(s)');
+%             ylabel('phase diff(rad)')
             % set(gca,'Xlim',[fc-3.5e3, fc+3.5e3]);
         else
             set(graph_fdB, 'XData', x, 'YData', y);
             % drawnow limitrate;
             drawnow
         end
+%         figure(3)
+%         findpeaks(dB_filter,x,'MinPeakHeight',max_dB+10);
     end
     if record
         pause(audioFrameLength/fs - toc + cycleStart) % 为什么是这个值
     end
 end
+
+%% beamform test
+audioFrameLength = 2048;
+audioFileName = 'test_face1.wav';
+audioInput = dsp.AudioFileReader( ...
+    'OutputDataType','double', ...
+    'Filename',audioFileName, ...
+    'PlayCount',inf, ...
+    'SamplesPerFrame',audioFrameLength);
+fs = audioInput.SampleRate;
+afw = dsp.AudioFileWriter( ...
+    'Filename', 'test_face1_beamformed.wav', ...
+    'SampleRate', fs, ...
+    'DataType', 'double');
+endTime = 10;
+for idx = 1:(endTime*fs/audioFrameLength)
+    y = audioInput();
+    weight = ones(7, 1);
+    y = ump8beamform(y, fs, weight);
+    afw(y);
+end
+release(audioInput);
+release(afw);
 
 % 输入一个实信号输出一个复信号，正交下变频
 function [I, Q] = real2complex(sr, st, st_shift90)
