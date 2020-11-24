@@ -196,34 +196,30 @@ for idx = 1:(endTime*fs/audioFrameLength) % 为什么是这个值
     f1 = f1(range2);
     dB1 = dB1(range2);
     max_dB = max(dB1);
+    
     %disp(max_dB+threshold);
     
     % 计算fr
     range = (f >= fc-1e3) & (f <= fc+1e3);
     f_filter = f(range);
     dB_filter = dB(range);
+    
     % fc_index = find(dB_filter == max(dB_filter)); % 20kHz的索引
     f_candidates = f_filter(dB_filter > (max_dB+threshold));
     [~, fr_index] = max(abs(f_candidates - fc)); % 接收到的从手反射过来的频率
     fr = f_candidates(fr_index);
+    
     % disp(fr);
     
-    % 判断运动
-    p = findpeaks(dB_filter,'MinPeakHeight',max_dB+threshold);
-    n_p = size(p,1);
-    if n_p > 1
-        % 有运动
-        
-        % 计算速度
-        ft = fc;
-        v = c * (fr-ft)/(fr+ft);
-    else
-        % 无运动
-        v = 0;
-    end
+    % 计算速度
+    ft = fc;
+    v = c * (fr-ft)/(fr+ft);
     % disp(v)
+    
     % 画v-t图
     addpoints(graph_vt,toc,v)
+
+    % drawnow limitrate;
     drawnow
     
     if DEBUG
@@ -231,24 +227,25 @@ for idx = 1:(endTime*fs/audioFrameLength) % 为什么是这个值
         y = dB_filter;
 %         x = 1/fs:1/fs:(length(ph)-80)/fs;
 %         y = diff_ph;
-        if ~ishandle(graph_fdB)
-            % graph = plot(f,P1);
-            figure;
-            graph_fdB = plot(x, y);
-            title('Single-Sided Amplitude Spectrum of X(t)');
-            xlabel('f (Hz)');
-            % ylabel('|P1(f)|');
-            ylabel('dB')
-            % set(gca,'Xlim',[fc-3.5e3, fc+3.5e3]);
-        else
-            set(graph_fdB, 'XData', x, 'YData', y);
-            % drawnow limitrate;
-            drawnow
-        end
+%         if ~ishandle(graph_fdB)
+%             % graph = plot(f,P1);
+%             figure;
+%             graph_fdB = plot(x, y);
+%             title('Single-Sided Amplitude Spectrum of X(t)');
+%             xlabel('f (Hz)');
+%             % ylabel('|P1(f)|');
+%             ylabel('dB')
+%             % set(gca,'Xlim',[fc-3.5e3, fc+3.5e3]);
+%         else
+%             set(graph_fdB, 'XData', x, 'YData', y);
+%             % drawnow limitrate;
+%             drawnow
+%         end
     end
     if record
         pause(audioFrameLength/fs - toc + cycleStart) % 为什么是这个值
     end
+    pause(0.001);
 end
 
 % 输入一个实信号输出一个复信号，正交下变频

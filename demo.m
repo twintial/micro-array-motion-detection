@@ -26,7 +26,7 @@ deviceReader = audioDeviceReader(...
 % setup(deviceReader)
 
 % Òª¼Ósamplerate
-fileWriter = dsp.AudioFileWriter('hand_move.wav','FileFormat','WAV','SampleRate', fs);
+fileWriter = dsp.AudioFileWriter('hand_move_face1.wav','FileFormat','WAV','SampleRate', fs);
 disp('Speak into microphone now.');
 
 tic;
