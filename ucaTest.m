@@ -4,10 +4,10 @@ close all;
 
 DEBUG = 0;
 % 构建声源
-record = 0;
+record = 1;
 audioFrameLength = 1024;
 if record
-    audioFileName = 't.wav';
+    audioFileName = 'hand_move_face1.wav';
     audioInput = dsp.AudioFileReader( ...
         'OutputDataType','double', ...
         'Filename',audioFileName, ...
@@ -49,13 +49,32 @@ for idx = 1:(endTime*fs/audioFrameLength) % 为什么是这个值
     cycleStart = toc;
     y = audioInput();
     y = y(:,2:end);
+    max_y = max(y);
+    if min(max_y) == 0
+        max_y = max_y + 1e-5;
+    end
+    y = y ./ max_y;
+    % 画个小图
+    t = 1/fs:1/fs:1024/fs;
+    figure(1);
+    for i = 1:size(y,2)
+        y_i = y(:,i)';
+        %     max_y = max(y_i);
+        %     r = 1/max_y; % 放大倍率
+        %     y_i = y_i * r;
+        subplot(4,2,i);
+        plot(t,y_i);
+        xlabel('t');
+        ylabel('A');
+    end
+    
     %滤波，提取超声波信号
     Wc = [2*(fc-350)/fs,2*(fc+350)/fs];
     [b, a] = butter(4,Wc);
     y = filter(b,a,y);
     % y = highpass(y,20e3-350,fs);
     [~,ang] = musicazelspectrum(y);
-    figure(2)
+    figure(2);
     plotSpectrum(musicazelspectrum);
     drawnow
     %DoaDisplayer(deg2rad(ang(1))); % 可视化
@@ -66,6 +85,8 @@ end
 release(audioInput)
 
 %% simu
+clc;clear;
+close all;
 
 % 构建uca
 microphone = phased.OmnidirectionalMicrophoneElement();
@@ -73,7 +94,7 @@ uca = phased.UCA('NumElements',6,'Radius',0.043);
 
 ura = phased.URA('Size',[10 5],'ElementSpacing',[0.3 0.5]);
 
-ang1 = [40; 45];         % First signal
+ang1 = [63; 45];         % First signal
 ang2 = [-20; 20];        % Second signal
 
 c = 343; % 声速
@@ -81,15 +102,16 @@ fc = 20e3; % 20kHz
 % c = physconst('LightSpeed');
 % fc = 300e6; % 20kHz
 lambda = c / fc;
-ns = 2; % 信号数量
+ns = 1; % 信号数量
 
-Nsamp = 1024;
+Nsamp = 2048;
 nPower = 0.01;
 rs = rng(2007);
 
 signal = sensorsig(getElementPosition(uca)/lambda,Nsamp, ...
-    [ang1 ang2],nPower);
+    [ang1],nPower);
 rng(rs);
+signal = signal ./ abs(max(signal));
 
 musicazelspectrum = phased.MUSICEstimator2D('SensorArray',uca,...
     'OperatingFrequency',fc,'PropagationSpeed',c,...
@@ -100,7 +122,31 @@ musicazelspectrum = phased.MUSICEstimator2D('SensorArray',uca,...
 plotSpectrum(musicazelspectrum);
 disp(ang)
 
-%% fft 能看到很好的现象。存在一个问题，如何判断周围是否有移动的物体。用相位，差分。
+%% 波形图查看
+clear;clc;
+close all;
+audioFileName = 'test_face1.wav';
+[y, fs] = audioread(audioFileName);
+endTime = size(y,1)/fs;
+t = 1/fs:1/fs:endTime;
+y = y./max(y);
+for i = 1:size(y,2)
+    y_i = y(:,i)';
+%     max_y = max(y_i);
+%     r = 1/max_y; % 放大倍率
+%     y_i = y_i * r;
+    subplot(4,2,i);
+    plot(t,y_i);
+    xlabel('t');
+    ylabel('A');
+    y(:,i) = y_i';
+end
+% 保存
+fileWriter = dsp.AudioFileWriter('test_face1_after_amplify.wav','FileFormat','WAV','SampleRate', fs);
+step(fileWriter, y);
+release(fileWriter);
+
+%% fft 能看到很好的现象。存在一个问题，如何判断周围是否有移动的物体。用相位，差分，存在问题，改用波峰。
 clc;clear;
 close all;
 
@@ -143,12 +189,9 @@ title('v-t');
 xlabel('t(s)');
 ylabel('v(m/s)')
 
-% db阈值 16/10还不错
-threshold = 5;
-% 循环处理信号 idx=50开始出现波动
-% for i = 1:50
-%     y = audioInput();
-% end
+% db阈值 16/10还不错，由于input6的问题这个值肯定也存在问题
+threshold = 16;
+% 循环处理信号
 tic;
 for idx = 1:(endTime*fs/audioFrameLength) % 为什么是这个值
     cycleStart = toc;
@@ -157,10 +200,10 @@ for idx = 1:(endTime*fs/audioFrameLength) % 为什么是这个值
     Wc = [2*(fc-3.5e3)/fs,2*(fc+3.5e3)/fs];
     [b, a] = butter(4,Wc);
     y = filter(b,a,y);
-    y = y(:,7); % 只拿中心点
+%     y = y(:,1); % 只拿中心点
     % beamform
-%     weight = ones(7, 1)/7;
-%     y = ump8beamform(y, fs, weight);
+    weight = ones(7, 1)/7;
+    y = ump8beamform(y, fs, weight);
     
     % fft
     FFT_Data = fft(y);
@@ -210,7 +253,7 @@ for idx = 1:(endTime*fs/audioFrameLength) % 为什么是这个值
     fr = f_candidates(fr_index);
     % disp(fr);
     
-    % 判断运动，这里的阈值不使用之前计算得到的阈值
+    % 判断运动，这里的阈值不使用之前计算得到的阈值，由于input6的问题这个值肯定也存在问题
     p = findpeaks(dB_filter,'MinPeakHeight',max_dB+10);
     n_p = size(p,1);
     if n_p > 1
@@ -281,6 +324,7 @@ for idx = 1:(endTime*fs/audioFrameLength)
 end
 release(audioInput);
 release(afw);
+
 
 % 输入一个实信号输出一个复信号，正交下变频
 function [I, Q] = real2complex(sr, st, st_shift90)
