@@ -155,7 +155,7 @@ DEBUG = 1;
 record = 0;
 audioFrameLength = 2048;
 if record
-    audioFileName = 'hand_move_face1.wav';
+    audioFileName = 'audio/exercise/cross_streth1.wav';
     audioInput = dsp.AudioFileReader( ...
         'OutputDataType','double', ...
         'Filename',audioFileName, ...
@@ -184,25 +184,34 @@ c = 343; % 声速
 graph_fdB = graph;
 
 figure;
-graph_vt = animatedline;
+v_s = [0];
+t_s = [0];
+graph_vt = plot(t_s,v_s);
 title('v-t');
 xlabel('t(s)');
 ylabel('v(m/s)')
 
 % db阈值 16/10还不错，由于input6的问题这个值肯定也存在问题
-threshold = 16;
+threshold = 10;
 % 循环处理信号
 tic;
 for idx = 1:(endTime*fs/audioFrameLength) % 为什么是这个值
     cycleStart = toc;
     y = audioInput();
+%     % power增强
+%     max_y = max(y);
+%     if min(max_y) == 0
+%         max_y = max_y + 1e-5;
+%     end
+%     y = y ./ max_y;
     % 滤波
     Wc = [2*(fc-3.5e3)/fs,2*(fc+3.5e3)/fs];
     [b, a] = butter(4,Wc);
     y = filter(b,a,y);
-%     y = y(:,1); % 只拿中心点
+%     y = y(:,6); % 只拿中心点
     % beamform
-    weight = ones(7, 1)/7;
+    weight = ones(7, 1)/6;
+    weight(6) = 0;
     y = ump8beamform(y, fs, weight);
     
     % fft
@@ -214,14 +223,14 @@ for idx = 1:(endTime*fs/audioFrameLength) % 为什么是这个值
     f = fs*(0:(L/2))/L;
     dB = db(P1,'power'); % 转换为分贝
     
-%     % 效果不是很好，明天试试速度的连续性
-%     % 计算相位，用于看是否有运动的物体
-%     y2 = hilbert(y);
-%     ph = angle(y2);
-%     ph = unwrap(ph);
-%     diff_ph = diff(ph);
-%     % 将前40个和后40个点拿去,平均住不管用
-%     diff_ph = diff_ph(40:end-40);
+    % 效果不是很好，明天试试速度的连续性
+    % 计算相位，用于看是否有运动的物体
+    y2 = hilbert(y);
+    ph = angle(y2);
+    ph = unwrap(ph);
+    diff_ph = diff(ph);
+    % 将前40个和后40个点拿去,平均住不管用
+    diff_ph = diff_ph(40:end-40);
 %     diff_ph = smooth(diff_ph, 0.9); % 平滑化
 %     diff_ph = diff_ph(50:end-50);
 %     
@@ -269,7 +278,15 @@ for idx = 1:(endTime*fs/audioFrameLength) % 为什么是这个值
 %     v = c * (fr-ft)/(fr+ft);
     % disp(v)
     % 画v-t图
-    addpoints(graph_vt,toc,v)
+%     addpoints(graph_vt,toc,v)
+    v_s(end+1) = v;
+    t_s(end+1) = toc;
+    num = 100;
+    if(size(v_s,2)>num)
+        set(graph_vt, 'XData', t_s(end-num:end), 'YData', v_s(end-num:end));
+    else
+        set(graph_vt, 'XData', t_s, 'YData', v_s);
+    end
     drawnow
     
     if DEBUG
@@ -291,7 +308,7 @@ for idx = 1:(endTime*fs/audioFrameLength) % 为什么是这个值
             % set(gca,'Xlim',[fc-3.5e3, fc+3.5e3]);
         else
             set(graph_fdB, 'XData', x, 'YData', y);
-            % drawnow limitrate;
+%             drawnow limitrate;
             drawnow
         end
 %         figure(3)
