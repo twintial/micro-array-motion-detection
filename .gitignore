@@ -1,5 +1,6 @@
 doa-tools
 audio
+dataset
 *.wav
 *.zip
 *.asv

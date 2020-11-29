@@ -26,7 +26,7 @@ deviceReader = audioDeviceReader(...
 % setup(deviceReader)
 
 % Òª¼Ósamplerate
-fileWriter = dsp.AudioFileWriter('audio/exercise/cross_streth2.wav','FileFormat','WAV','SampleRate', fs);
+fileWriter = dsp.AudioFileWriter('audio/exercise/shoulder_rotation1.wav','FileFormat','WAV','SampleRate', fs);
 disp('Speak into microphone now.');
 
 tic;

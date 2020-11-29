@@ -125,7 +125,7 @@ disp(ang)
 %% 波形图查看
 clear;clc;
 close all;
-audioFileName = 'test_face1.wav';
+audioFileName = 'audio/test_face1.wav';
 [y, fs] = audioread(audioFileName);
 endTime = size(y,1)/fs;
 t = 1/fs:1/fs:endTime;
@@ -142,9 +142,9 @@ for i = 1:size(y,2)
     y(:,i) = y_i';
 end
 % 保存
-fileWriter = dsp.AudioFileWriter('test_face1_after_amplify.wav','FileFormat','WAV','SampleRate', fs);
-step(fileWriter, y);
-release(fileWriter);
+% fileWriter = dsp.AudioFileWriter('test_face1_after_amplify.wav','FileFormat','WAV','SampleRate', fs);
+% step(fileWriter, y);
+% release(fileWriter);
 
 %% fft 能看到很好的现象。存在一个问题，如何判断周围是否有移动的物体。用相位，差分，存在问题，改用波峰。
 clc;clear;
@@ -192,7 +192,9 @@ xlabel('t(s)');
 ylabel('v(m/s)')
 
 % db阈值 16/10还不错，由于input6的问题这个值肯定也存在问题
-threshold = 10;
+threshold = 11;
+% 10
+thre_peak = 11;
 % 循环处理信号
 tic;
 for idx = 1:(endTime*fs/audioFrameLength) % 为什么是这个值
@@ -204,15 +206,16 @@ for idx = 1:(endTime*fs/audioFrameLength) % 为什么是这个值
 %         max_y = max_y + 1e-5;
 %     end
 %     y = y ./ max_y;
+
     % 滤波
     Wc = [2*(fc-3.5e3)/fs,2*(fc+3.5e3)/fs];
     [b, a] = butter(4,Wc);
     y = filter(b,a,y);
-%     y = y(:,6); % 只拿中心点
+    y = y(:,1); % 只拿中心点
     % beamform
-    weight = ones(7, 1)/6;
-    weight(6) = 0;
-    y = ump8beamform(y, fs, weight);
+%     weight = ones(7, 1)/6;
+%     weight(6) = 0;
+%     y = ump8beamform(y, fs, weight);
     
     % fft
     FFT_Data = fft(y);
@@ -223,14 +226,14 @@ for idx = 1:(endTime*fs/audioFrameLength) % 为什么是这个值
     f = fs*(0:(L/2))/L;
     dB = db(P1,'power'); % 转换为分贝
     
-    % 效果不是很好，明天试试速度的连续性
-    % 计算相位，用于看是否有运动的物体
-    y2 = hilbert(y);
-    ph = angle(y2);
-    ph = unwrap(ph);
-    diff_ph = diff(ph);
-    % 将前40个和后40个点拿去,平均住不管用
-    diff_ph = diff_ph(40:end-40);
+%     % 效果不是很好，明天试试速度的连续性
+%     % 计算相位，用于看是否有运动的物体
+%     y2 = hilbert(y);
+%     ph = angle(y2);
+%     ph = unwrap(ph);
+%     diff_ph = diff(ph);
+%     % 将前40个和后40个点拿去,平均住不管用
+%     diff_ph = diff_ph(40:end-40);
 %     diff_ph = smooth(diff_ph, 0.9); % 平滑化
 %     diff_ph = diff_ph(50:end-50);
 %     
@@ -263,7 +266,7 @@ for idx = 1:(endTime*fs/audioFrameLength) % 为什么是这个值
     % disp(fr);
     
     % 判断运动，这里的阈值不使用之前计算得到的阈值，由于input6的问题这个值肯定也存在问题
-    p = findpeaks(dB_filter,'MinPeakHeight',max_dB+10);
+    p = findpeaks(dB_filter,'MinPeakHeight',max_dB+thre_peak);
     n_p = size(p,1);
     if n_p > 1
         % 有运动
@@ -292,7 +295,7 @@ for idx = 1:(endTime*fs/audioFrameLength) % 为什么是这个值
     if DEBUG
         x = f_filter;
         y = dB_filter;
-%         x = 40/fs:1/fs:(length(ph)-41)/fs;
+%         x = 1/fs:1/fs:(length(ph)-1)/fs;
 %         y = diff_ph;
         if ~ishandle(graph_fdB)
             % graph = plot(f,P1);
