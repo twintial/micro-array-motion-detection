@@ -1,5 +1,5 @@
 clc;clear;
-audioFileName = 'audio/exercise/shoulder_rotation1.wav';
+audioFileName = 'audio/exercise/leg_raise1.wav';
 audioFrameLength = 2048;
 audioInput = dsp.AudioFileReader( ...
     'OutputDataType','double', ...
@@ -11,6 +11,9 @@ fc = 20e3;
 
 startTime = 12;
 endTime = 40;
+for i = 1:floor(startTime*fs/audioFrameLength)
+    y = audioInput();
+end
 for idx = ceil(startTime*fs/audioFrameLength):(endTime*fs/audioFrameLength)
     y = audioInput();
     y(:,6) = [];
@@ -26,7 +29,7 @@ for idx = ceil(startTime*fs/audioFrameLength):(endTime*fs/audioFrameLength)
     % 存储数据 
     temp = diff_ph';
     temp = temp(:)';
-    save dataset/shoulder_rotation1.txt temp -ascii -append
+    save dataset/leg_raise1.txt temp -ascii -append
 end
 
 %% 文件读写操作

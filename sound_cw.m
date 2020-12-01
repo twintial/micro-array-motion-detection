@@ -50,6 +50,7 @@ y2 = filter(b,a,Q_signal);
 data_signal = y1+1j.*y2;
 ph = angle(data_signal);
 ph = unwrap(ph);
+ph = diff(ph);
 figure;
 t1 = 1/fs:1/fs:length(y1)/fs;
 plot(t1,ph);

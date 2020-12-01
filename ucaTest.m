@@ -111,7 +111,7 @@ rs = rng(2007);
 signal = sensorsig(getElementPosition(uca)/lambda,Nsamp, ...
     [ang1],nPower);
 rng(rs);
-signal = signal ./ abs(max(signal));
+% signal = signal ./ abs(max(signal));
 
 musicazelspectrum = phased.MUSICEstimator2D('SensorArray',uca,...
     'OperatingFrequency',fc,'PropagationSpeed',c,...
@@ -155,7 +155,7 @@ DEBUG = 1;
 record = 0;
 audioFrameLength = 2048;
 if record
-    audioFileName = 'audio/exercise/cross_streth1.wav';
+    audioFileName = 'audio/exercise/curls1.wav';
     audioInput = dsp.AudioFileReader( ...
         'OutputDataType','double', ...
         'Filename',audioFileName, ...
@@ -173,7 +173,7 @@ else
         'SamplesPerFrame', audioFrameLength);
 end
 
-endTime = 10;
+endTime = 50;
 if ~record
     endTime = 1e4;
 end
@@ -195,6 +195,20 @@ ylabel('v(m/s)')
 threshold = 11;
 % 10
 thre_peak = 11;
+
+if record == 0
+    % 产生信号
+    fs = 48000; %采样频率48KHz
+    dur = 65; %发送声音时长10s
+    fc = 20000;%中心频率时17KHz
+    t = 1/fs:1/fs:dur;
+    cw_signal = cos(2*pi*fc*t); %生成余弦波信号，用来发射
+    info = audiodevinfo;
+    player = audioplayer(cw_signal,fs,24,3);
+    play(player);
+end
+
+
 % 循环处理信号
 tic;
 for idx = 1:(endTime*fs/audioFrameLength) % 为什么是这个值

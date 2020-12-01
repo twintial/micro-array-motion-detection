@@ -26,11 +26,21 @@ deviceReader = audioDeviceReader(...
 % setup(deviceReader)
 
 % 要加samplerate
-fileWriter = dsp.AudioFileWriter('audio/exercise/shoulder_rotation1.wav','FileFormat','WAV','SampleRate', fs);
+fileWriter = dsp.AudioFileWriter('audio/exercise/rotation2.wav','FileFormat','WAV','SampleRate', fs);
 disp('Speak into microphone now.');
 
+% 产生信号
+fs = 48000; %采样频率48KHz
+dur = 60; %发送声音时长10s
+fc = 20000;%中心频率时17KHz
+t = 1/fs:1/fs:dur;
+cw_signal = cos(2*pi*fc*t); %生成余弦波信号，用来发射
+info = audiodevinfo;
+player = audioplayer(cw_signal,fs,24,3);
+play(player)
+
 tic;
-while toc < 60
+while toc < 50
     disp(toc)
     acquiredAudio = record(deviceReader);
     step(fileWriter, acquiredAudio);
