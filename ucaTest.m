@@ -152,10 +152,10 @@ close all;
 
 DEBUG = 1;
 % 构建声源
-record = 0;
+record = 1;
 audioFrameLength = 2048;
 if record
-    audioFileName = 'audio/exercise/curls1.wav';
+    audioFileName = 'audio/exercise/curls3.wav';
     audioInput = dsp.AudioFileReader( ...
         'OutputDataType','double', ...
         'Filename',audioFileName, ...
@@ -183,18 +183,13 @@ c = 343; % 声速
 % 定义图画对象
 graph_fdB = graph;
 
-figure;
 v_s = [0];
 t_s = [0];
-graph_vt = plot(t_s,v_s);
-title('v-t');
-xlabel('t(s)');
-ylabel('v(m/s)')
 
 % db阈值 16/10还不错，由于input6的问题这个值肯定也存在问题
-threshold = 11;
+threshold = 10;
 % 10
-thre_peak = 11;
+thre_peak = 10;
 
 if record == 0
     % 产生信号
@@ -208,7 +203,7 @@ if record == 0
     play(player);
 end
 
-
+disp("开始循环处理信号");
 % 循环处理信号
 tic;
 for idx = 1:(endTime*fs/audioFrameLength) % 为什么是这个值
@@ -224,7 +219,7 @@ for idx = 1:(endTime*fs/audioFrameLength) % 为什么是这个值
     % 滤波
     Wc = [2*(fc-3.5e3)/fs,2*(fc+3.5e3)/fs];
     [b, a] = butter(4,Wc);
-    y = filter(b,a,y);
+%     y = filter(b,a,y);
     y = y(:,1); % 只拿中心点
     % beamform
 %     weight = ones(7, 1)/6;
@@ -275,6 +270,7 @@ for idx = 1:(endTime*fs/audioFrameLength) % 为什么是这个值
     dB_filter = dB(range);
     % fc_index = find(dB_filter == max(dB_filter)); % 20kHz的索引
     f_candidates = f_filter(dB_filter > (max_dB+threshold));
+%     disp(max_dB+threshold);
     [~, fr_index] = max(abs(f_candidates - fc)); % 接收到的从手反射过来的频率
     fr = f_candidates(fr_index);
     % disp(fr);
@@ -291,29 +287,35 @@ for idx = 1:(endTime*fs/audioFrameLength) % 为什么是这个值
         % 无运动
         v = 0;
     end
-%     ft = fc;
-%     v = c * (fr-ft)/(fr+ft);
-    % disp(v)
-    % 画v-t图
-%     addpoints(graph_vt,toc,v)
     v_s(end+1) = v;
-    t_s(end+1) = toc;
-    num = 100;
-    if(size(v_s,2)>num)
-        set(graph_vt, 'XData', t_s(end-num:end), 'YData', v_s(end-num:end));
-    else
-        set(graph_vt, 'XData', t_s, 'YData', v_s);
-    end
-    drawnow
+    t_s(end+1) = audioFrameLength/fs * idx;
     
     if DEBUG
+        % 画速度图
+        if idx == 1
+            figure(1);
+            graph_vt = plot(t_s,v_s);
+            title('v-t');
+            xlabel('t(s)');
+            ylabel('v(m/s)')
+        else
+            num = 100;
+            if(size(v_s,2)>num)
+                set(graph_vt, 'XData', t_s(end-num:end), 'YData', v_s(end-num:end));
+            else
+                set(graph_vt, 'XData', t_s, 'YData', v_s);
+            end
+            drawnow
+        end
+        
+        % 画频谱图
         x = f_filter;
         y = dB_filter;
 %         x = 1/fs:1/fs:(length(ph)-1)/fs;
 %         y = diff_ph;
         if ~ishandle(graph_fdB)
             % graph = plot(f,P1);
-            figure;
+            figure(2);
             graph_fdB = plot(x, y);
             title('Amplitude Spectrum of fr with 20kHz ft');
             xlabel('f (Hz)');
@@ -335,7 +337,17 @@ for idx = 1:(endTime*fs/audioFrameLength) % 为什么是这个值
         pause(audioFrameLength/fs - toc + cycleStart) % 为什么是这个值
     end
 end
-
+disp("开始处理速度");
+% 处理速度,只取10s-40s的
+v_s_filter = v_s(t_s>10 & t_s<40);
+% 计算一个速度用2048/48000s，划分成5s大小的窗口，0.2s为步长
+for i = 10:0.2:35
+    t_selected = t_s>=i & t_s<=i+5;
+    v_window = v_s(t_selected);
+    % 自相关
+    [acf,lags] = autocorr(v_window, 'NumLags', 100);
+end
+release(audioInput)
 %% beamform test
 audioFrameLength = 2048;
 audioFileName = 'test_face1.wav';

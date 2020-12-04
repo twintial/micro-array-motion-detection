@@ -5,7 +5,7 @@ DEBUG = 1;
 record = 1;
 audioFrameLength = 2048;
 if record
-    audioFileName = 'audio/exercise/test.wav';
+    audioFileName = 'audio/exercise/leg_raise1.wav';
     audioInput = dsp.AudioFileReader( ...
         'OutputDataType','double', ...
         'Filename',audioFileName, ...
@@ -76,14 +76,14 @@ for idx = 1:(endTime*fs/audioFrameLength)
     y2 = filter(b,a,Q_signal);
     data_signal = y1+1j.*y2;
     
-    ph = angle(data_signal);
-    ph = unwrap(ph);
-    figure(3);
-    t = 1/fs:1/fs:audioFrameLength/fs;
-    t_s = t + sgement_t*(idx-1);
-    plot(t_s, ph);
+%     ph = angle(data_signal);
+%     ph = unwrap(ph);
+%     figure(3);
+%     t = 1/fs:1/fs:audioFrameLength/fs;
+%     t_s = t + sgement_t*(idx-1);
+%     plot(t_s, ph);
 
-    % 圈圈图
+% %     圈圈图
 %     real_y2 = real(y2);
 %     imag_y2 = imag(y2);
 %     addpoints(h, real_y2, imag_y2);
@@ -92,17 +92,19 @@ for idx = 1:(endTime*fs/audioFrameLength)
 %         drawnow
 %         pause(0.01);
 %     end
+        
+    real_y2 = y1;
+    imag_y2 = y2;
     
-    
-%     % real/imag图
-%     y_IQ = [real_y2 imag_y2];
-% %     y_g = [y_g; y_IQ];
-%      t = 1/fs:1/fs:audioFrameLength/fs;
-% %     t_s = [t_s t + sgement_t*(idx-1)];
-%     t_s = t + sgement_t*(idx-1);
-%     figure(1);
-% %     set(graph_IQ, 'XData', t_s, 'YData', y_g);
-%     plot(t_s,y_IQ)
+    % real/imag图
+    y_IQ = [real_y2;imag_y2];
+%     y_g = [y_g; y_IQ];
+    t = 1/fs:1/fs:audioFrameLength/fs;
+%     t_s = [t_s t + sgement_t*(idx-1)];
+    t_s = t + sgement_t*(idx-1);
+    figure(1);
+%     set(graph_IQ, 'XData', t_s, 'YData', y_g);
+    plot(t_s,y_IQ)
     
     if record
         pause(audioFrameLength/fs - toc + cycleStart) % 为什么是这个值
@@ -145,6 +147,8 @@ y1 = filter(b,a,I_signal);
 y2 = filter(b,a,Q_signal);
 data_signal = y1+1j.*y2;
 
+% data_signal = data_signal./abs(data_signal) * 100;
+
 y1_1 = filter(b,a,I_signal_1);
 y2_1 = filter(b,a,Q_signal_1);
 data_signal_1 = y1_1+1j.*y2_1;
@@ -159,3 +163,38 @@ ph = ph - ph_1;
 figure(1);
 t = 1/fs:1/fs:length(data_signal)/fs;
 plot(t, ph);
+
+
+real_y2 = real(data_signal);
+imag_y2 = imag(data_signal);
+
+% real/imag图
+y_IQ = [real_y2;imag_y2];
+%     y_g = [y_g; y_IQ];
+% t = 1/fs:1/fs:audioFrameLength/fs;
+%     t_s = [t_s t + sgement_t*(idx-1)];
+t_s = t;
+figure(2);
+%     set(graph_IQ, 'XData', t_s, 'YData', y_g);
+plot(t_s,y_IQ)
+
+
+% 圈圈图
+
+% figure(3)
+% g = plot(real_y2(1), imag_y2(1));
+% set(gca, 'Xlim', [-0.025,0.025]);
+% set(gca, 'Ylim', [-0.025,0.025]);
+% t = 1/48000;
+% for i = 48000*2:500:size(real_y2,2)
+%     set(g, 'XData', real_y2(48e3*2:i), 'YData', imag_y2(48e3*2:i));
+%     drawnow
+%     disp(t*i)
+% end
+
+
+% h = animatedline('MaximumNumPoints', 1000);
+% for i = 1:size(real_y2,2)
+%     addpoints(h, real_y2(i), imag_y2(i));
+%     drawnow
+% end

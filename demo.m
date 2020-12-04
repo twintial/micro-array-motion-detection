@@ -22,11 +22,13 @@ deviceReader = audioDeviceReader(...
     'NumChannels', 7 ,...
     'OutputDataType','double',...
     'SamplesPerFrame', audioFrameLength);
-% deviceReader = audioDeviceReader();
+% deviceReader = audioDeviceReader(...
+%     'SampleRate', fs, ...
+%     'SamplesPerFrame', audioFrameLength);
 % setup(deviceReader)
 
 % 要加samplerate
-fileWriter = dsp.AudioFileWriter('audio/exercise/rotation2.wav','FileFormat','WAV','SampleRate', fs);
+fileWriter = dsp.AudioFileWriter('audio/exercise/shoulder_rotation3.wav','FileFormat','WAV','SampleRate', fs);
 disp('Speak into microphone now.');
 
 % 产生信号
@@ -194,3 +196,16 @@ sp_root.true_positions = doas;
 fprintf('[Root-MUSIC] Estimated DOAs:\n');
 disp(sp_root.x_est);
 plot_sp(sp_root, 'Title', 'Root-MUSIC');
+
+%% 自相关测试
+clc;clear;
+close all;
+fs = 10;
+x = 0:1/fs:200/fs;
+y = sin(x);
+plot(y);
+figure(2);
+[acf,lags,bounds,h] = autocorr(y, 'NumLags', 199);
+figure(3);
+[c,lags] = xcorr(y,y, 199);
+stem(lags,c);
