@@ -150,12 +150,12 @@ end
 clc;clear;
 close all;
 
-DEBUG = 1;
+DEBUG = 0;
 % 构建声源
 record = 1;
 audioFrameLength = 2048;
 if record
-    audioFileName = 'audio/exercise/curls3.wav';
+    audioFileName = 'audio/exercise/raise_leg3.wav';
     audioInput = dsp.AudioFileReader( ...
         'OutputDataType','double', ...
         'Filename',audioFileName, ...
@@ -337,17 +337,27 @@ for idx = 1:(endTime*fs/audioFrameLength) % 为什么是这个值
         pause(audioFrameLength/fs - toc + cycleStart) % 为什么是这个值
     end
 end
+release(audioInput);
 disp("开始处理速度");
 % 处理速度,只取10s-40s的
-v_s_filter = v_s(t_s>10 & t_s<40);
 % 计算一个速度用2048/48000s，划分成5s大小的窗口，0.2s为步长
 for i = 10:0.2:35
     t_selected = t_s>=i & t_s<=i+5;
     v_window = v_s(t_selected);
     % 自相关
     [acf,lags] = autocorr(v_window, 'NumLags', 100);
+    save dataset/raise_leg3.txt acf -ascii -append
+%     % fft
+%     FFT_Data = fft(v_window);
+%     L = length(v_window);
+%     P2 = abs(FFT_Data/L);
+%     P1 = P2(1:L/2+1);
+%     P1(2:end-1) = 2*P1(2:end-1);
+%     f = fs*(0:(L/2))/L;
+%     dB = db(P1,'power'); % 转换为分贝
+%     figure(4)
+%     plot(f,dB);
 end
-release(audioInput)
 %% beamform test
 audioFrameLength = 2048;
 audioFileName = 'test_face1.wav';
