@@ -3,8 +3,10 @@ clc;
 clear;
 deviceReader1 = audioDeviceReader('Driver', 'DirectSound');
 deviceReader2 = audioDeviceReader('Driver', 'ASIO');
+deviceWriter = audioDeviceWriter('Driver', 'ASIO');
 devices_DirectSound = getAudioDevices(deviceReader1);
 devices_ASIO = getAudioDevices(deviceReader2);
+devices_output = getAudioDevices(deviceWriter);
 info = audiodevinfo;
 % 
 % playRec = audioPlayerRecorder;
@@ -28,12 +30,12 @@ deviceReader = audioDeviceReader(...
 % setup(deviceReader)
 
 % 要加samplerate
-fileWriter = dsp.AudioFileWriter('audio/exercise/shoulder_rotation3.wav','FileFormat','WAV','SampleRate', fs);
+fileWriter = dsp.AudioFileWriter('audio/daily_test.wav','FileFormat','WAV','SampleRate', fs);
 disp('Speak into microphone now.');
 
 % 产生信号
 fs = 48000; %采样频率48KHz
-dur = 60; %发送声音时长10s
+dur = 10; %发送声音时长10s
 fc = 20000;%中心频率时17KHz
 t = 1/fs:1/fs:dur;
 cw_signal = cos(2*pi*fc*t); %生成余弦波信号，用来发射
@@ -42,7 +44,7 @@ player = audioplayer(cw_signal,fs,24,3);
 play(player)
 
 tic;
-while toc < 50
+while toc < dur+5
     disp(toc)
     acquiredAudio = record(deviceReader);
     step(fileWriter, acquiredAudio);
@@ -196,6 +198,52 @@ sp_root.true_positions = doas;
 fprintf('[Root-MUSIC] Estimated DOAs:\n');
 disp(sp_root.x_est);
 plot_sp(sp_root, 'Title', 'Root-MUSIC');
+
+
+%%
+clc; clear; close all;
+%%%%%%%%%%%%%%%%%% MUSIC %%%%%%%%%%%%%%%%%%
+derad = pi/180;
+N = 8;               % 阵元个数        
+M = 3;               % 信源数目
+theta = [-50 0 50];  % 待估计角度
+snr = 10;            % 信噪比
+K = 1024;            % 快拍数 10/1024
+
+dd = 0.5;            % 阵元间距 d=lamda/2      
+d=0:dd:(N-1)*dd;
+A=exp(-1i*2*pi*d.'*sin(theta*derad));
+
+S=randn(M,K); X=A*S;
+X1=awgn(X,snr,'measured');
+Rxx=X1*X1'/K;
+%InvS=inv(Rxx); 
+[EV,D]=eig(Rxx);    % 特征向量 特征值
+EVA=diag(D)';
+[EVA,I]=sort(EVA);  % 从小到大排列 返回索引
+%EVA=fliplr(EVA);   % 反转元素
+EV=fliplr(EV(:,I)); % 按列反转特征向量
+
+for iang = 1:361    % 遍历
+        angle(iang)=(iang-181)/2;
+        phim=derad*angle(iang);
+        a=exp(-1i*2*pi*d*sin(phim)).';
+        L=3;    
+        En=EV(:,L+1:N);
+        %SP(iang)=(a'*a)/(a'*En*En'*a);
+        SP(iang)=1/(a'*En*En'*a);
+end
+SP=abs(SP);
+%SPmax=max(SP);
+%SP=10*log10(SP/SPmax);  % 归一化
+SP=10*log10(SP);
+h=plot(angle,SP);
+set(h,'Linewidth',0.5);
+xlabel('入射角/(degree)');
+ylabel('空间谱/(dB)');
+%axis([-100 100 -40 60]);
+set(gca, 'XTick',[-100:20:100]);
+grid on;  
 
 %% 自相关测试
 clc;clear;

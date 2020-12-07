@@ -2,12 +2,12 @@
 clc;clear;
 close all;
 
-DEBUG = 0;
+DEBUG = 1;
 % 构建声源
 record = 1;
-audioFrameLength = 1024;
+audioFrameLength = 2048;
 if record
-    audioFileName = 'hand_move_face1.wav';
+    audioFileName = 'audio/daily_test.wav';
     audioInput = dsp.AudioFileReader( ...
         'OutputDataType','double', ...
         'Filename',audioFileName, ...
@@ -28,56 +28,70 @@ end
 microphone = phased.OmnidirectionalMicrophoneElement();
 uca = phased.UCA('NumElements',6,'Radius',0.043);
 if DEBUG
-    viewArray(uca,'Title','Uniform Circular Array (UCA)','ShowIndex','All','ShowNormals',true);
+    viewArray(uca,'Title','Uniform Circular Array (UCA)','ShowIndex','All','ShowNormals',false);
 end
 % music
-c = 343; % 声速
+c = 340; % 声速
 fc = 20e3; % 20kHz
 amp = 100; % amplification
 ns = 1; % 信号数量
 musicazelspectrum = phased.MUSICEstimator2D('SensorArray',uca,...
     'OperatingFrequency',fc,'PropagationSpeed',c,...
-    'AzimuthScanAngles',-90:90,'ElevationScanAngles',-1:30,...,
+    'AzimuthScanAngles',-180:180,'ElevationScanAngles',-1:30,...,
     'DOAOutputPort',true,...
     'NumSignalsSource','Property','NumSignals',ns);
 
-endTime = 100;
+endTime = 15;
 DoaDisplayer = MyDoaDisplay(); % 可视化
+if record == 0
+    % 产生信号
+    fs = 48000; %采样频率48KHz
+    dur = endTime; %发送声音时长10s
+    fc = 20000;%中心频率时17KHz
+    t = 1/fs:1/fs:dur;
+    cw_signal = cos(2*pi*fc*t); %生成余弦波信号，用来发射
+    info = audiodevinfo;
+    player = audioplayer(cw_signal,fs,24,3);
+    play(player)
+end
 % 循环处理信号
 tic;
 for idx = 1:(endTime*fs/audioFrameLength) % 为什么是这个值
     cycleStart = toc;
     y = audioInput();
-    y = y(:,2:end);
-    max_y = max(y);
-    if min(max_y) == 0
-        max_y = max_y + 1e-5;
-    end
-    y = y ./ max_y;
+    % 到底是1-6还是2-7？
+    y = y(:,1:end-1);
+%     y = hilbert(y);
+%     max_y = max(y);
+%     if min(max_y) == 0
+%         max_y = max_y + 1e-5;
+%     end
+%     y = y ./ max_y;
     % 画个小图
-    t = 1/fs:1/fs:1024/fs;
-    figure(1);
-    for i = 1:size(y,2)
-        y_i = y(:,i)';
-        %     max_y = max(y_i);
-        %     r = 1/max_y; % 放大倍率
-        %     y_i = y_i * r;
-        subplot(4,2,i);
-        plot(t,y_i);
-        xlabel('t');
-        ylabel('A');
-    end
+%     t = 1/fs:1/fs:1024/fs;
+%     figure(1);
+%     for i = 1:size(y,2)
+%         y_i = y(:,i)';
+%         %     max_y = max(y_i);
+%         %     r = 1/max_y; % 放大倍率
+%         %     y_i = y_i * r;
+%         subplot(4,2,i);
+%         plot(t,y_i);
+%         xlabel('t');
+%         ylabel('A');
+%     end
     
     %滤波，提取超声波信号
-    Wc = [2*(fc-350)/fs,2*(fc+350)/fs];
-    [b, a] = butter(4,Wc);
-    y = filter(b,a,y);
+%     Wc = [2*(fc-350)/fs,2*(fc+350)/fs];
+%     [b, a] = butter(4,Wc);
+%     y = filter(b,a,y);
     % y = highpass(y,20e3-350,fs);
-    [~,ang] = musicazelspectrum(y);
+    [p,ang] = musicazelspectrum(y);
+    disp(ang);
     figure(2);
     plotSpectrum(musicazelspectrum);
     drawnow
-    %DoaDisplayer(deg2rad(ang(1))); % 可视化
+    % DoaDisplayer(deg2rad(ang(1))); % 可视化
     if record
         pause(audioFrameLength/fs - toc + cycleStart) % 为什么是这个值
     end
@@ -93,6 +107,7 @@ microphone = phased.OmnidirectionalMicrophoneElement();
 uca = phased.UCA('NumElements',6,'Radius',0.043);
 
 ura = phased.URA('Size',[10 5],'ElementSpacing',[0.3 0.5]);
+% viewArray(ura,'Title','Uniform Circular Array (UCA)','ShowIndex','All','ShowNormals',false);
 
 ang1 = [63; 45];         % First signal
 ang2 = [-20; 20];        % Second signal
@@ -111,51 +126,76 @@ rs = rng(2007);
 signal = sensorsig(getElementPosition(uca)/lambda,Nsamp, ...
     [ang1],nPower);
 rng(rs);
+% view_at(abs(signal), fc);
 % signal = signal ./ abs(max(signal));
 
 musicazelspectrum = phased.MUSICEstimator2D('SensorArray',uca,...
     'OperatingFrequency',fc,'PropagationSpeed',c,...
-    'AzimuthScanAngles',-90:90,'ElevationScanAngles',-10:60,...,
+    'AzimuthScanAngles',-180:180,'ElevationScanAngles',-10:60,...,
     'DOAOutputPort',true,...
     'NumSignalsSource','Property','NumSignals',ns);
-[~,ang] = musicazelspectrum(signal);
+[p,ang] = musicazelspectrum(signal);
 plotSpectrum(musicazelspectrum);
 disp(ang)
 
+%% MyMusic2D
+clear;clc;
+close all;
+audioFrameLength = 2048;
+audioFileName = 'audio/daily_test.wav';
+audioInput = dsp.AudioFileReader( ...
+    'OutputDataType','double', ...
+    'Filename',audioFileName, ...
+    'PlayCount',inf, ...
+    'SamplesPerFrame',audioFrameLength);
+fs = audioInput.SampleRate;
+endTime = 15;
+f = 20e3;
+c = 340;
+r = 0.043;
+theta = 60;
+pos = [[0;0;0],...
+    [r*cosd(theta*0);r*sind(theta*0);0],...
+    [r*cosd(theta*1);r*sind(theta*1);0],...
+    [r*cosd(theta*2);r*sind(theta*2);0],...
+    [r*cosd(theta*3);r*sind(theta*3);0],...
+    [r*cosd(theta*4);r*sind(theta*4);0],...
+    [r*cosd(theta*5);r*sind(theta*5);0],...
+    ];
+for idx = 1:(endTime*fs/audioFrameLength)
+    X = audioInput();
+%     X = hilbert(X);
+    azang = -180:180;
+    elang = -1:30;
+    [scanpattern, doas] = MyMusic2D(X, pos, f, c, azang, elang, 1);
+    Hresp = phased.internal.RespPattern3D;
+    Hresp.AzAngle = azang;
+    Hresp.ElAngle = elang;
+    Hresp.Pattern = scanpattern;  % magnitude spectrum
+    h = plot(Hresp,'Title','test');
+    drawnow limitrate
+    disp(idx * audioFrameLength/fs);
+end
 %% 波形图查看
 clear;clc;
 close all;
-audioFileName = 'audio/test_face1.wav';
+audioFileName = 'audio/daily_test.wav';
 [y, fs] = audioread(audioFileName);
-endTime = size(y,1)/fs;
-t = 1/fs:1/fs:endTime;
-y = y./max(y);
-for i = 1:size(y,2)
-    y_i = y(:,i)';
-%     max_y = max(y_i);
-%     r = 1/max_y; % 放大倍率
-%     y_i = y_i * r;
-    subplot(4,2,i);
-    plot(t,y_i);
-    xlabel('t');
-    ylabel('A');
-    y(:,i) = y_i';
-end
 % 保存
-% fileWriter = dsp.AudioFileWriter('test_face1_after_amplify.wav','FileFormat','WAV','SampleRate', fs);
+% fileWriter = dsp.AudioFileWriter('audio/1(delete).wav','FileFormat','WAV','SampleRate', fs);
 % step(fileWriter, y);
 % release(fileWriter);
-
+view_at(y,fs);
 %% fft 能看到很好的现象。存在一个问题，如何判断周围是否有移动的物体。用相位，差分，存在问题，改用波峰。
 clc;clear;
 close all;
 
-DEBUG = 0;
+DEBUG = 1;
 % 构建声源
-record = 1;
+record = 0;
 audioFrameLength = 2048;
 if record
-    audioFileName = 'audio/exercise/raise_leg3.wav';
+    audioFileName = 'audio/exercise/cross_streth_new1.wav';
     audioInput = dsp.AudioFileReader( ...
         'OutputDataType','double', ...
         'Filename',audioFileName, ...
@@ -175,7 +215,7 @@ end
 
 endTime = 50;
 if ~record
-    endTime = 1e4;
+    endTime = 65;
 end
 fc = 20e3;
 c = 343; % 声速
@@ -187,9 +227,9 @@ v_s = [0];
 t_s = [0];
 
 % db阈值 16/10还不错，由于input6的问题这个值肯定也存在问题
-threshold = 10;
+threshold = 11;
 % 10
-thre_peak = 10;
+thre_peak = 5;
 
 if record == 0
     % 产生信号
@@ -338,26 +378,26 @@ for idx = 1:(endTime*fs/audioFrameLength) % 为什么是这个值
     end
 end
 release(audioInput);
-disp("开始处理速度");
-% 处理速度,只取10s-40s的
-% 计算一个速度用2048/48000s，划分成5s大小的窗口，0.2s为步长
-for i = 10:0.2:35
-    t_selected = t_s>=i & t_s<=i+5;
-    v_window = v_s(t_selected);
-    % 自相关
-    [acf,lags] = autocorr(v_window, 'NumLags', 100);
-    save dataset/raise_leg3.txt acf -ascii -append
-%     % fft
-%     FFT_Data = fft(v_window);
-%     L = length(v_window);
-%     P2 = abs(FFT_Data/L);
-%     P1 = P2(1:L/2+1);
-%     P1(2:end-1) = 2*P1(2:end-1);
-%     f = fs*(0:(L/2))/L;
-%     dB = db(P1,'power'); % 转换为分贝
-%     figure(4)
-%     plot(f,dB);
-end
+% disp("开始处理速度");
+% % 处理速度,只取10s-40s的
+% % 计算一个速度用2048/48000s，划分成5s大小的窗口，0.2s为步长
+% for i = 10:0.2:35
+%     t_selected = t_s>=i & t_s<=i+5;
+%     v_window = v_s(t_selected);
+%     % 自相关
+%     [acf,lags] = autocorr(v_window, 'NumLags', 100);
+%     save dataset/cross_streth_1m.txt acf -ascii -append
+% %     % fft
+% %     FFT_Data = fft(v_window);
+% %     L = length(v_window);
+% %     P2 = abs(FFT_Data/L);
+% %     P1 = P2(1:L/2+1);
+% %     P1(2:end-1) = 2*P1(2:end-1);
+% %     f = fs*(0:(L/2))/L;
+% %     dB = db(P1,'power'); % 转换为分贝
+% %     figure(4)
+% %     plot(f,dB);
+% end
 %% beamform test
 audioFrameLength = 2048;
 audioFileName = 'test_face1.wav';
@@ -402,4 +442,21 @@ dist = [0, r, r*sin(theta), -r*sin(theta), -r, -r*sin(theta), r*sin(theta)];
 delay = dist/343;
 shifted_data = delayseq(y,delay,fs);
 y_b = shifted_data * weight;
+end
+
+function view_at(y, fs)
+endTime = size(y,1)/fs;
+t = 1/fs:1/fs:endTime;
+y = y./max(y);
+for i = 1:size(y,2)
+    y_i = y(:,i)';
+    max_y = max(y_i);
+    r = 1/max_y; % 放大倍率
+    y_i = y_i * r;
+    subplot(4,2,i);
+    plot(t,y_i);
+    xlabel('t');
+    ylabel('A');
+    y(:,i) = y_i';
+end
 end

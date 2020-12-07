@@ -113,7 +113,7 @@ end
 %% 离线，不分窗口
 clc;clear;
 close all;
-audioFileName = 'audio/exercise/rotation2.wav';
+audioFileName = 'audio/origin_mic_cross.wav';
 [y, fs] = audioread(audioFileName);
 fc = 20e3;
 dur = 60;
@@ -125,8 +125,9 @@ Wc = [2*(fc-3.5e3)/fs,2*(fc+3.5e3)/fs];
 [b, a] = butter(4,Wc);
 y = filter(b,a,y);
 
-y_1 = y(:,2);
+% y_1 = y(:,2);
 y = y(:,1); % 取中心
+y_1 = y;
 
 % 转复信号
 % data_signal = hilbert(y);
@@ -159,10 +160,10 @@ ph = unwrap(ph);
 ph_1 = angle(data_signal_1);
 ph_1 = unwrap(ph_1);
 
-ph = ph - ph_1;
+% ph = ph - ph_1;
 figure(1);
 t = 1/fs:1/fs:length(data_signal)/fs;
-plot(t, ph);
+plot(t(10000:end), ph(10000:end));
 
 
 real_y2 = real(data_signal);

@@ -1,8 +1,8 @@
 clc;clear;
 close all;
-numElements = 7;      
+numElements = 10;      
 spacing = 0.2;      
-freq = 20e3;
+freq = 1000;
 speedSound = 343.0;   
 ANGLE_RESOLUTION = 500;
 
